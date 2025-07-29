@@ -4,7 +4,7 @@ import Stripe from "https://esm.sh/stripe@13.5.0?target=deno";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers": "authorization,x-client-info,apikey,content-type",
 };
 
 serve(async (req) => {
@@ -27,8 +27,8 @@ serve(async (req) => {
   try {
     // Get the request body
     const { userId, priceId } = await req.json();
-    
-    console.log("DEBUG: Creating checkout session for user:", userId, "with price:", priceId);
+    console.log("DEBUG: Creating checkout session for user:", userId);
+    console.log("DEBUG: Received price ID:", priceId);
 
     if (!userId) {
       return new Response(JSON.stringify({ error: "User ID is required" }), {
@@ -38,14 +38,38 @@ serve(async (req) => {
     }
 
     // Initialize Stripe with your secret key
-    const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY") || "", {
+    const stripeSecretKey = Deno.env.get("STRIPE_SECRET_KEY") || "";
+    if (!stripeSecretKey) {
+      console.error("ERROR: STRIPE_SECRET_KEY is not set in environment variables");
+      return new Response(JSON.stringify({ error: "Stripe configuration error" }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 500,
+      });
+    }
+
+    const stripe = new Stripe(stripeSecretKey, {
       apiVersion: "2023-10-16",
     });
 
-    // Use the price ID from environment variable or the one passed in the request
-    const finalPriceId = priceId || Deno.env.get("STRIPE_PRICE_ID") || "price_1RpGRTIa1WstuQNeoUVVfQxv";
+    // FIXED: Use the correct price ID - this should be a PRICE ID, not a PRODUCT ID
+    // The price ID you provided (prod_SlFUqFSFpwk5zq) is actually a product ID
+    // We need to use the actual price ID from your Stripe dashboard
+    const correctPriceId = "price_1RpGRTIa1WstuQNeoUVVfQxv"; // This is the correct price ID
+    const finalPriceId = priceId || correctPriceId;
     
-    console.log("DEBUG: Using price ID:", finalPriceId);
+    console.log("DEBUG: Using price ID for checkout:", finalPriceId);
+
+    // Verify the price exists in Stripe before creating checkout session
+    try {
+      const price = await stripe.prices.retrieve(finalPriceId);
+      console.log("DEBUG: Price verified in Stripe:", price.id, "Amount:", price.unit_amount);
+    } catch (priceError) {
+      console.error("ERROR: Invalid price ID:", finalPriceId, priceError.message);
+      return new Response(JSON.stringify({ error: `Invalid price ID: ${finalPriceId}` }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 400,
+      });
+    }
 
     // Create Stripe Checkout Session
     const session = await stripe.checkout.sessions.create({
@@ -62,20 +86,15 @@ serve(async (req) => {
     });
 
     console.log("DEBUG: Checkout session created successfully:", session.id);
+    console.log("DEBUG: Checkout URL:", session.url);
 
-    return new Response(JSON.stringify({ 
-      id: session.id,
-      url: session.url 
-    }), {
+    return new Response(JSON.stringify({ id: session.id, url: session.url }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 200,
     });
-
   } catch (err) {
     console.error("ERROR: Failed to create checkout session:", err.message);
-    return new Response(JSON.stringify({ 
-      error: `Failed to create checkout session: ${err.message}` 
-    }), {
+    return new Response(JSON.stringify({ error: `Failed to create checkout session: ${err.message}` }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 500,
     });
