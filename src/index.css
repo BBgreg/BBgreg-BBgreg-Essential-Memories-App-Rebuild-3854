@@ -1,0 +1,196 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Global Styles */
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Helvetica Neue', Arial, sans-serif;
+  margin: 0;
+  padding: 0;
+  background-color: #fafafa;
+}
+
+/* Loading Spinner */
+.spinner {
+  width: 40px;
+  height: 40px;
+  border: 4px solid #f3f4f6;
+  border-top: 4px solid #f472b6;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+.spinner-small {
+  width: 20px;
+  height: 20px;
+  border: 2px solid #f3f4f6;
+  border-top: 2px solid #f472b6;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* Message Animations */
+.message-slide-in {
+  animation: slideInFromLeft 0.3s ease-out;
+}
+
+@keyframes slideInFromLeft {
+  0% {
+    transform: translateX(-20px);
+    opacity: 0;
+  }
+  100% {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+/* Button Hover Effects */
+.btn-hover:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 25px rgba(244, 114, 182, 0.2);
+}
+
+/* Bottom Navigation */
+.bottom-nav {
+  border-radius: 25px 25px 0 0;
+  border-bottom: none;
+}
+
+/* Memory Type Selection - Light Pink Gradient for Selected State */
+.memory-type-selected-light-pink {
+  position: relative;
+  transform: translateY(-2px);
+  box-shadow: 0 0 0 3px rgba(255,182,193,0.3), 0 6px 16px rgba(255,182,193,0.2);
+  border: 2px solid rgba(255,182,193,0.4);
+}
+
+/* Updated Gradient Classes with Refined Colors */
+.birthday-gradient {
+  background: linear-gradient(to right, #ffd1a1, #ffb4b4);
+}
+
+.anniversary-gradient {
+  background: linear-gradient(to right, #ffc8dd, #ffafcc);
+}
+
+.special-date-gradient {
+  background: linear-gradient(to right, #c8b6ff, #b8c0ff);
+}
+
+.holiday-gradient {
+  background: linear-gradient(to right, #98f5e1, #b9fbc0);
+}
+
+/* GLOBAL GRADIENT APPLICATION FOR ESSENTIAL MEMORIES TITLES */
+.essential-memories-title,
+.essential-memories-title-global {
+  background: linear-gradient(to right, #ec4899, #60a5fa);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  display: inline-block;
+}
+
+/* Upcoming Memories Item Gradient - RESTORED EXACT SPECIFICATION */
+.upcoming-memory-item,
+.upcoming-memory-item-restored {
+  background: linear-gradient(to right, #FFF0F5, #FFC0CB);
+  transition: all 0.3s ease;
+}
+
+/* Upcoming Memories Item Gradient - DARKENED VERSION */
+.upcoming-memory-item-darkened {
+  background: linear-gradient(to right, #FFE0F0, #FFADC2);
+  transition: all 0.3s ease;
+}
+
+/* Confetti Animation for QOTD Modal */
+.confetti-container {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: -1;
+}
+
+.confetti {
+  position: absolute;
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0px) rotate(0deg);
+    opacity: 1;
+  }
+  50% {
+    transform: translateY(-20px) rotate(180deg);
+    opacity: 0.8;
+  }
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f5f9;
+  border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: linear-gradient(to bottom, #f472b6, #2dd4bf);
+  border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(to bottom, #ec4899, #14b8a6);
+}
+
+/* Responsive Design */
+@media (max-width: 640px) {
+  .spinner {
+    width: 32px;
+    height: 32px;
+    border-width: 3px;
+  }
+  
+  .spinner-small {
+    width: 16px;
+    height: 16px;
+    border-width: 2px;
+  }
+}
+
+/* Focus states for accessibility */
+button:focus-visible,
+input:focus-visible {
+  outline: 2px solid #f472b6;
+  outline-offset: 2px;
+}
+
+/* Animation for page transitions */
+.page-transition {
+  animation: fadeInUp 0.3s ease-out;
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
