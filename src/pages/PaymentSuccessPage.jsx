@@ -15,6 +15,7 @@ const PaymentSuccessPage = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
+  const [sessionVerified, setSessionVerified] = useState(false);
 
   // Extract the session_id from the URL if available
   const searchParams = new URLSearchParams(location.search);
@@ -22,15 +23,50 @@ const PaymentSuccessPage = () => {
   console.log("DEBUG: PaymentSuccessPage - Session ID:", sessionId);
 
   useEffect(() => {
-    const updatePremiumStatus = async () => {
+    const verifyPaymentAndUpdateStatus = async () => {
       try {
         setLoading(true);
-        console.log("DEBUG: Payment Success - Updating premium status");
+        console.log("DEBUG: Payment Success - Verifying payment session");
         
+        if (!sessionId) {
+          console.error("ERROR: No session ID provided");
+          setError("Invalid payment session. Please contact support if you've completed payment.");
+          setLoading(false);
+          return;
+        }
+        
+        // Skip direct database updates for session IDs that don't come from Stripe
+        // Real Stripe session IDs start with 'cs_'
+        if (!sessionId.startsWith('cs_')) {
+          console.error("ERROR: Invalid session ID format:", sessionId);
+          setError("Invalid payment session. Please contact support if you've completed payment.");
+          setLoading(false);
+          return;
+        }
+
+        // Verify the session with Stripe through our Edge Function
+        const { data: verificationData, error: verificationError } = await supabase.functions.invoke(
+          'verify-checkout-session',
+          {
+            body: {
+              sessionId: sessionId,
+              userId: user?.id
+            }
+          }
+        );
+
+        if (verificationError || !verificationData?.verified) {
+          console.error("ERROR: Session verification failed:", verificationError || "Invalid response");
+          setError("Payment verification failed. Please contact support.");
+          setLoading(false);
+          return;
+        }
+        
+        setSessionVerified(true);
+        console.log("DEBUG: Payment session verified successfully");
+
         if (user?.id) {
-          console.log("DEBUG: Manually updating premium status for user:", user.id);
-          
-          // Direct database update
+          // Only update the premium status if the session is verified
           const { error: updateError } = await supabase
             .from('profiles')
             .update({ is_premium: true })
@@ -39,22 +75,20 @@ const PaymentSuccessPage = () => {
           if (updateError) {
             console.error("ERROR: Failed to update premium status:", updateError);
             setError("There was a problem updating your account status. Please contact support.");
-          } else {
-            console.log("DEBUG: Premium status successfully set to true");
-            setSuccess(true);
+            setLoading(false);
+            return;
           }
+          
+          console.log("DEBUG: Premium status successfully set to true");
+          setSuccess(true);
+          
+          // Refresh premium status to update the UI
+          await refreshPremiumStatus();
+          console.log("DEBUG: Premium status refreshed in context");
         } else {
           console.error("ERROR: No user ID available for premium update");
           setError("User authentication issue. Please try logging in again.");
         }
-        
-        // Wait a moment for the update to process
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        
-        // Refresh premium status to update the UI
-        await refreshPremiumStatus();
-        console.log("DEBUG: Premium status refreshed in context");
-        
       } catch (err) {
         console.error("DEBUG: Error updating premium status:", err);
         setError("There was an issue confirming your subscription. Please contact support.");
@@ -63,7 +97,12 @@ const PaymentSuccessPage = () => {
       }
     };
 
-    updatePremiumStatus();
+    if (user) {
+      verifyPaymentAndUpdateStatus();
+    } else {
+      setLoading(false);
+      setError("Please log in to complete your subscription activation.");
+    }
   }, [refreshPremiumStatus, user?.id, sessionId]);
 
   return (
@@ -73,15 +112,24 @@ const PaymentSuccessPage = () => {
         animate={{ scale: 1, opacity: 1 }}
         className="bg-white rounded-3xl p-8 shadow-2xl max-w-md w-full text-center"
       >
-        <div className="bg-green-100 rounded-full h-24 w-24 flex items-center justify-center mx-auto mb-6">
-          <SafeIcon icon={FiCheck} className="text-green-500 text-5xl" />
-        </div>
-        <h2 className="text-2xl font-bold text-gray-800 mb-4">Thank You for Your Purchase!</h2>
+        {sessionVerified ? (
+          <div className="bg-green-100 rounded-full h-24 w-24 flex items-center justify-center mx-auto mb-6">
+            <SafeIcon icon={FiCheck} className="text-green-500 text-5xl" />
+          </div>
+        ) : (
+          <div className="h-24 w-24 mx-auto mb-6 flex items-center justify-center">
+            <div className="text-6xl">💳</div>
+          </div>
+        )}
+        
+        <h2 className="text-2xl font-bold text-gray-800 mb-4">
+          {sessionVerified ? "Thank You for Your Purchase!" : "Processing Your Payment"}
+        </h2>
         
         {loading ? (
           <div className="mb-6">
             <div className="spinner mx-auto mb-4"></div>
-            <p className="text-gray-600">Activating your premium features...</p>
+            <p className="text-gray-600">Verifying your payment and activating premium features...</p>
           </div>
         ) : error ? (
           <div className="bg-red-50 border border-red-200 rounded-xl p-4 mb-6">

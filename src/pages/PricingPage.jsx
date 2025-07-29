@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { useAuth } from '../contexts/AuthContext';
+import { supabase } from '../lib/supabase';
 import * as FiIcons from 'react-icons/fi';
 import SafeIcon from '../common/SafeIcon';
 
@@ -61,20 +62,36 @@ const PricingPage = () => {
     try {
       console.log("DEBUG: Handling subscription for user:", user.id);
       
-      // Direct update approach - skip payment processing completely
-      // This will directly set the user as premium without going through Stripe
-      setSuccess("Processing your upgrade...");
+      // Call Supabase Edge Function to create Stripe checkout session
+      const { data: functionData, error: functionError } = await supabase.functions.invoke(
+        'create-checkout-session',
+        {
+          body: {
+            userId: user.id,
+            priceId: priceId
+          }
+        }
+      );
       
-      // Simulate a brief loading period
-      setTimeout(() => {
-        // Navigate directly to success page
-        navigate('/payment-success?session_id=direct_upgrade_' + Date.now());
-      }, 1500);
+      if (functionError) {
+        console.error("ERROR: Edge function error:", functionError);
+        throw new Error(functionError.message || "Failed to create checkout session");
+      }
+      
+      if (!functionData || !functionData.url) {
+        console.error("ERROR: Invalid response from checkout function:", functionData);
+        throw new Error("Invalid checkout response");
+      }
+      
+      console.log("DEBUG: Checkout session created:", functionData);
+      
+      // Redirect to Stripe Checkout
+      window.location.href = functionData.url;
+      
     } catch (err) {
       console.error("DEBUG: Error processing upgrade:", err);
       setError("We encountered an issue. Please try again or contact support.");
-    } finally {
-      // Don't set loading to false here - we want to keep showing loading until the redirect happens
+      setLoading(false);
     }
   };
 
