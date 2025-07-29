@@ -11,9 +11,12 @@ const corsHeaders = {
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === "OPTIONS") {
-    return new Response(null, { headers: corsHeaders, status: 200 });
+    return new Response(null, {
+      headers: corsHeaders,
+      status: 200
+    });
   }
-
+  
   // Only allow POST requests
   if (req.method !== "POST") {
     return new Response(
@@ -106,8 +109,8 @@ serve(async (req) => {
     console.log("🔗 Checkout URL:", session.url);
 
     return new Response(
-      JSON.stringify({ 
-        id: session.id, 
+      JSON.stringify({
+        id: session.id,
         url: session.url,
         userId: userId
       }),
