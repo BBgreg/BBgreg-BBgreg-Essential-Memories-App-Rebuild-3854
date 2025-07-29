@@ -11,10 +11,7 @@ const corsHeaders = {
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === "OPTIONS") {
-    return new Response(null, {
-      headers: corsHeaders,
-      status: 200,
-    });
+    return new Response(null, { headers: corsHeaders, status: 200 });
   }
 
   // Only allow POST requests
@@ -30,9 +27,11 @@ serve(async (req) => {
 
   try {
     // Get the request body
-    const { userId, priceId } = await req.json();
-    console.log("DEBUG: Creating checkout session for user:", userId);
-    console.log("DEBUG: Received price ID:", priceId);
+    const { userId, priceId, customerEmail } = await req.json();
+    
+    console.log("🎯 Creating checkout session for user:", userId);
+    console.log("💰 Received price ID:", priceId);
+    console.log("📧 Customer email:", customerEmail);
 
     if (!userId) {
       return new Response(
@@ -47,7 +46,7 @@ serve(async (req) => {
     // Initialize Stripe with your secret key
     const stripeSecretKey = Deno.env.get("STRIPE_SECRET_KEY") || "";
     if (!stripeSecretKey) {
-      console.error("ERROR: STRIPE_SECRET_KEY is not set in environment variables");
+      console.error("❌ STRIPE_SECRET_KEY is not set in environment variables");
       return new Response(
         JSON.stringify({ error: "Stripe configuration error" }),
         {
@@ -61,16 +60,18 @@ serve(async (req) => {
       apiVersion: "2023-10-16",
     });
 
-    const correctPriceId = "price_1RpGRTIa1WstuQNeoUVVfQxv"; // This is the correct price ID
+    // Use the correct price ID from your Stripe account
+    const correctPriceId = "price_1Rq48ZIa1WstuQNeqItRhuTN"; // From your provided data
     const finalPriceId = priceId || correctPriceId;
-    console.log("DEBUG: Using price ID for checkout:", finalPriceId);
+    
+    console.log("💳 Using price ID for checkout:", finalPriceId);
 
     // Verify the price exists in Stripe before creating checkout session
     try {
       const price = await stripe.prices.retrieve(finalPriceId);
-      console.log("DEBUG: Price verified in Stripe:", price.id, "Amount:", price.unit_amount);
+      console.log("✅ Price verified in Stripe:", price.id, "Amount:", price.unit_amount);
     } catch (priceError) {
-      console.error("ERROR: Invalid price ID:", finalPriceId, priceError.message);
+      console.error("❌ Invalid price ID:", finalPriceId, priceError.message);
       return new Response(
         JSON.stringify({ error: `Invalid price ID: ${finalPriceId}` }),
         {
@@ -80,7 +81,7 @@ serve(async (req) => {
       );
     }
 
-    // Create Stripe Checkout Session with proper success and cancel URLs
+    // Create Stripe Checkout Session
     const session = await stripe.checkout.sessions.create({
       line_items: [
         {
@@ -94,21 +95,30 @@ serve(async (req) => {
       client_reference_id: userId, // CRITICAL: This is how we identify the user in the webhook
       allow_promotion_codes: true,
       billing_address_collection: 'required',
-      customer_email: req.headers.get("x-customer-email") || undefined,
+      customer_email: customerEmail,
+      metadata: {
+        userId: userId, // Additional metadata for tracking
+        source: "essential-memories-app"
+      }
     });
 
-    console.log("DEBUG: Checkout session created successfully:", session.id);
-    console.log("DEBUG: Checkout URL:", session.url);
+    console.log("✅ Checkout session created successfully:", session.id);
+    console.log("🔗 Checkout URL:", session.url);
 
     return new Response(
-      JSON.stringify({ id: session.id, url: session.url }),
+      JSON.stringify({ 
+        id: session.id, 
+        url: session.url,
+        userId: userId
+      }),
       {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
         status: 200,
       }
     );
+
   } catch (err) {
-    console.error("ERROR: Failed to create checkout session:", err.message);
+    console.error("💥 Failed to create checkout session:", err.message);
     return new Response(
       JSON.stringify({ error: `Failed to create checkout session: ${err.message}` }),
       {
@@ -119,4 +129,4 @@ serve(async (req) => {
   }
 });
 
-console.log("DEBUG: create-checkout-session Edge Function initialized");
+console.log("🚀 create-checkout-session Edge Function initialized");

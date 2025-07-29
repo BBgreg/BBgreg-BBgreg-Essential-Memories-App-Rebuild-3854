@@ -42,13 +42,12 @@ const PricingPage = () => {
       name: "Unlimited Memories",
       amount: 2.97,
       priceId: "price_1Rq48ZIa1WstuQNeqItRhuTN",
-      paymentLink: "https://buy.stripe.com/7sY9AT4cy0X61Ea5Kk1RC03",
       currency: "usd",
       interval: "month"
     }
   ];
 
-  const handlePlanClick = (paymentLink) => {
+  const handlePlanClick = async (priceId) => {
     if (!user) {
       setError("Please log in to upgrade");
       return;
@@ -63,13 +62,39 @@ const PricingPage = () => {
     setError('');
 
     try {
-      console.log("DEBUG: Opening Stripe payment link:", paymentLink);
-      // Open Stripe payment link in new tab
-      window.open(paymentLink, '_blank', 'noopener,noreferrer');
-      setSuccess("Redirected to secure payment page. Complete your purchase and return here.");
+      console.log("DEBUG: Creating checkout session for user:", user.id);
+      console.log("DEBUG: Using price ID:", priceId);
+
+      // Call our Edge Function to create a Stripe checkout session
+      const { data, error: functionError } = await supabase.functions.invoke('create-checkout-session', {
+        body: {
+          userId: user.id,
+          priceId: priceId,
+          customerEmail: user.email
+        }
+      });
+
+      if (functionError) {
+        console.error("DEBUG: Error creating checkout session:", functionError);
+        setError(`Failed to create checkout session: ${functionError.message}`);
+        return;
+      }
+
+      if (!data?.url) {
+        console.error("DEBUG: No checkout URL returned:", data);
+        setError("Failed to create checkout session - no URL returned");
+        return;
+      }
+
+      console.log("DEBUG: Checkout session created successfully:", data.id);
+      console.log("DEBUG: Redirecting to:", data.url);
+
+      // Redirect to Stripe Checkout
+      window.location.href = data.url;
+
     } catch (err) {
-      console.error("DEBUG: Error opening payment link:", err);
-      setError("We encountered an issue. Please try again or contact support.");
+      console.error("DEBUG: Unexpected error creating checkout session:", err);
+      setError("An unexpected error occurred. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -186,7 +211,7 @@ const PricingPage = () => {
               <motion.button
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
-                onClick={() => handlePlanClick(plan.paymentLink)}
+                onClick={() => handlePlanClick(plan.priceId)}
                 disabled={loading || user?.is_premium}
                 className={`w-full py-4 px-6 rounded-xl font-semibold transition-all duration-300 flex items-center justify-center ${
                   user?.is_premium
@@ -202,7 +227,7 @@ const PricingPage = () => {
                 {loading ? (
                   <>
                     <div className="spinner-small mr-2"></div>
-                    <span>Opening payment...</span>
+                    <span>Creating checkout...</span>
                   </>
                 ) : user?.is_premium ? (
                   'You Already Have Premium'
