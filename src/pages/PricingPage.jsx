@@ -32,20 +32,23 @@ const PricingPage = () => {
         }
       }
     };
+
     checkPremiumStatus();
   }, [user, refreshPremiumStatus]);
 
+  // Payment plans from provided Stripe data
   const pricingPlans = [
     {
-      name: "Unlimited",
-      amount: 2.99,
-      priceId: "price_1RpGRTIa1WstuQNeoUVVfQxv",
+      name: "Unlimited Memories",
+      amount: 2.97,
+      priceId: "price_1Rq48ZIa1WstuQNeqItRhuTN",
+      paymentLink: "https://buy.stripe.com/7sY9AT4cy0X61Ea5Kk1RC03",
       currency: "usd",
       interval: "month"
     }
   ];
 
-  const handlePlanClick = async (priceId) => {
+  const handlePlanClick = (paymentLink) => {
     if (!user) {
       setError("Please log in to upgrade");
       return;
@@ -60,37 +63,14 @@ const PricingPage = () => {
     setError('');
 
     try {
-      console.log("DEBUG: Handling subscription for user:", user.id);
-      
-      // Call Supabase Edge Function to create Stripe checkout session
-      const { data: functionData, error: functionError } = await supabase.functions.invoke(
-        'create-checkout-session',
-        {
-          body: {
-            userId: user.id,
-            priceId: priceId
-          }
-        }
-      );
-      
-      if (functionError) {
-        console.error("ERROR: Edge function error:", functionError);
-        throw new Error(functionError.message || "Failed to create checkout session");
-      }
-      
-      if (!functionData || !functionData.url) {
-        console.error("ERROR: Invalid response from checkout function:", functionData);
-        throw new Error("Invalid checkout response");
-      }
-      
-      console.log("DEBUG: Checkout session created:", functionData);
-      
-      // Redirect to Stripe Checkout
-      window.location.href = functionData.url;
-      
+      console.log("DEBUG: Opening Stripe payment link:", paymentLink);
+      // Open Stripe payment link in new tab
+      window.open(paymentLink, '_blank', 'noopener,noreferrer');
+      setSuccess("Redirected to secure payment page. Complete your purchase and return here.");
     } catch (err) {
-      console.error("DEBUG: Error processing upgrade:", err);
+      console.error("DEBUG: Error opening payment link:", err);
       setError("We encountered an issue. Please try again or contact support.");
+    } finally {
       setLoading(false);
     }
   };
@@ -186,11 +166,11 @@ const PricingPage = () => {
                 </div>
                 <div className="flex items-center">
                   <SafeIcon icon={FiCheck} className="text-green-500 mr-3" />
-                  <span className="text-gray-700">Unlimited practice</span>
+                  <span className="text-gray-700">Unlimited practice sessions</span>
                 </div>
                 <div className="flex items-center">
                   <SafeIcon icon={FiCheck} className="text-green-500 mr-3" />
-                  <span className="text-gray-700">Streak tracking</span>
+                  <span className="text-gray-700">Advanced streak tracking</span>
                 </div>
                 <div className="flex items-center">
                   <SafeIcon icon={FiCheck} className="text-green-500 mr-3" />
@@ -206,19 +186,23 @@ const PricingPage = () => {
               <motion.button
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
-                onClick={() => handlePlanClick(plan.priceId)}
+                onClick={() => handlePlanClick(plan.paymentLink)}
                 disabled={loading || user?.is_premium}
                 className={`w-full py-4 px-6 rounded-xl font-semibold transition-all duration-300 flex items-center justify-center ${
                   user?.is_premium
                     ? 'bg-gray-200 text-gray-500 cursor-not-allowed'
                     : 'bg-gradient-to-r from-pink-500 to-teal-400 text-white hover:shadow-lg'
                 }`}
-                style={!user?.is_premium ? { boxShadow: '0 4px 15px rgba(244,114,182,0.2)' } : {}}
+                style={
+                  !user?.is_premium
+                    ? { boxShadow: '0 4px 15px rgba(244,114,182,0.2)' }
+                    : {}
+                }
               >
                 {loading ? (
                   <>
                     <div className="spinner-small mr-2"></div>
-                    <span>Processing...</span>
+                    <span>Opening payment...</span>
                   </>
                 ) : user?.is_premium ? (
                   'You Already Have Premium'
@@ -229,12 +213,31 @@ const PricingPage = () => {
                   </>
                 )}
               </motion.button>
+
               <p className="text-center text-sm text-gray-500 mt-4">
                 Secure payment powered by Stripe
               </p>
             </motion.div>
           ))}
         </div>
+
+        {/* Additional Information */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.3 }}
+          className="mt-8 bg-white rounded-2xl p-6 shadow-lg"
+          style={{ boxShadow: '0 8px 20px rgba(0,0,0,0.05)' }}
+        >
+          <h3 className="text-lg font-bold text-gray-800 mb-4">Why Choose Premium?</h3>
+          <div className="space-y-3 text-gray-600">
+            <p>• Store unlimited important dates and memories</p>
+            <p>• Access advanced practice modes and streak challenges</p>
+            <p>• Get priority customer support</p>
+            <p>• Help support the development of new features</p>
+            <p>• Cancel your subscription anytime with no penalties</p>
+          </div>
+        </motion.div>
       </div>
     </div>
   );
