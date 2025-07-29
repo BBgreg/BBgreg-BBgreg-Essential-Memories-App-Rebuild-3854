@@ -14,6 +14,7 @@ const PaymentSuccessPage = () => {
   const { user, refreshPremiumStatus } = useAuth();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [success, setSuccess] = useState(false);
 
   // Extract the session_id from the URL if available
   const searchParams = new URLSearchParams(location.search);
@@ -24,13 +25,12 @@ const PaymentSuccessPage = () => {
     const updatePremiumStatus = async () => {
       try {
         setLoading(true);
-        console.log("DEBUG: Payment Success - Refreshing premium status");
+        console.log("DEBUG: Payment Success - Updating premium status");
         
-        // Manually set premium status to true since the webhook might not be working
         if (user?.id) {
           console.log("DEBUG: Manually updating premium status for user:", user.id);
           
-          // Direct database update as a workaround
+          // Direct database update
           const { error: updateError } = await supabase
             .from('profiles')
             .update({ is_premium: true })
@@ -38,9 +38,14 @@ const PaymentSuccessPage = () => {
             
           if (updateError) {
             console.error("ERROR: Failed to update premium status:", updateError);
+            setError("There was a problem updating your account status. Please contact support.");
           } else {
-            console.log("DEBUG: Premium status manually set to true");
+            console.log("DEBUG: Premium status successfully set to true");
+            setSuccess(true);
           }
+        } else {
+          console.error("ERROR: No user ID available for premium update");
+          setError("User authentication issue. Please try logging in again.");
         }
         
         // Wait a moment for the update to process
@@ -48,11 +53,11 @@ const PaymentSuccessPage = () => {
         
         // Refresh premium status to update the UI
         await refreshPremiumStatus();
-        console.log("DEBUG: Premium status refreshed");
+        console.log("DEBUG: Premium status refreshed in context");
         
       } catch (err) {
         console.error("DEBUG: Error updating premium status:", err);
-        setError("There was an issue confirming your subscription, but don't worry! Your premium features are now active.");
+        setError("There was an issue confirming your subscription. Please contact support.");
       } finally {
         setLoading(false);
       }
@@ -72,20 +77,29 @@ const PaymentSuccessPage = () => {
           <SafeIcon icon={FiCheck} className="text-green-500 text-5xl" />
         </div>
         <h2 className="text-2xl font-bold text-gray-800 mb-4">Thank You for Your Purchase!</h2>
+        
         {loading ? (
           <div className="mb-6">
             <div className="spinner mx-auto mb-4"></div>
             <p className="text-gray-600">Activating your premium features...</p>
           </div>
         ) : error ? (
-          <div className="bg-green-50 border border-green-200 rounded-xl p-4 mb-6">
-            <p className="text-green-600">{error}</p>
+          <div className="bg-red-50 border border-red-200 rounded-xl p-4 mb-6">
+            <p className="text-red-600">{error}</p>
           </div>
         ) : (
-          <p className="text-gray-600 mb-6">
-            Your premium subscription has been activated! You now have unlimited access to all features.
-          </p>
+          <div className="mb-6">
+            <div className="bg-green-50 border border-green-200 rounded-xl p-4 mb-4">
+              <p className="text-green-600 font-medium">
+                ✅ Your premium access has been activated successfully!
+              </p>
+            </div>
+            <p className="text-gray-600">
+              You now have unlimited access to all features. Enjoy your premium experience!
+            </p>
+          </div>
         )}
+        
         <motion.button
           onClick={() => navigate('/home')}
           whileHover={{ scale: 1.05 }}

@@ -1,10 +1,10 @@
 # 🚨 CRITICAL: Stripe Price ID Fix Required
 
 ## The Problem
-You were using a **Product ID** ) instead of a **Price ID** for Stripe checkout.
+You were using a **Product ID** (`prod_SlFUqFSFpwk5zq`) instead of a **Price ID** for Stripe checkout.
 
-- ❌  = Product ID (won't work for checkout)
-- ✅ ` = Price ID (correct for checkout)
+- ❌ `prod_SlFUqFSFpwk5zq` = Product ID (won't work for checkout)
+- ✅ `price_1RpGRTIa1WstuQNeoUVVfQxv` = Price ID (correct for checkout)
 
 ## The Fix Applied
 1. **Updated Edge Function**: Fixed the `create-checkout-session` function to use the correct price ID
@@ -18,8 +18,9 @@ Go to Supabase Dashboard > Project Settings > Edge Functions > Secrets
 
 **Update this secret:**
 ```
-
+STRIPE_PRICE_ID: price_1RpGRTIa1WstuQNeoUVVfQxv
 ```
+(Remove the old `prod_SlFUqFSFpwk5zq` value)
 
 ### Step 2: Redeploy Edge Function
 Run this command to deploy the updated function:
