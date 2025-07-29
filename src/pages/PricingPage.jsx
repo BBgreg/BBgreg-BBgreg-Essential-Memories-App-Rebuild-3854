@@ -4,12 +4,8 @@ import { motion } from 'framer-motion';
 import { useAuth } from '../contexts/AuthContext';
 import * as FiIcons from 'react-icons/fi';
 import SafeIcon from '../common/SafeIcon';
-import { loadStripe } from '@stripe/stripe-js';
 
 const { FiArrowLeft, FiCheck, FiExternalLink, FiLoader } = FiIcons;
-
-// Initialize Stripe outside component
-const stripePromise = loadStripe('pk_live_51RpFQYIa1WstuQNel3Qgim8DgQ2SpI0UXqJXtdRqCwBMPMJyCQbgVIIcZL3OJOr8qo31xHlDWfOBFyiVLF9Lcpxv00taA0VLfQ');
 
 const PricingPage = () => {
   const navigate = useNavigate();
@@ -35,7 +31,6 @@ const PricingPage = () => {
         }
       }
     };
-    
     checkPremiumStatus();
   }, [user, refreshPremiumStatus]);
 
@@ -62,37 +57,40 @@ const PricingPage = () => {
 
     setLoading(true);
     setError('');
-    
-    try {
-      console.log("DEBUG: Creating checkout session via Edge Function for user:", user.id);
-      
-      // NEW: Use the Supabase Edge Function instead of direct Stripe redirect
-      const response = await fetch('https://oeccgchvvewljcrfayrg.supabase.co/functions/v1/create-checkout-session', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          userId: user.id,
-          priceId: priceId
-        })
-      });
 
-      const sessionData = await response.json();
-      
+    try {
+      console.log("DEBUG: Creating checkout session for user:", user.id);
+
+      const response = await fetch(
+        'https://oeccgchvvewljcrfayrg.supabase.co/functions/v1/create-checkout-session',
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            // Add Authorization header with anon key
+            'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9lY2NnY2h2dmV3bGpjcmZheXJnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTI5NzIyNjEsImV4cCI6MjA2ODU0ODI2MX0.A_OyJgFUudjNSrhHcfD6oE6iNtnQnwAGFrrmsuqcKIU'
+          },
+          body: JSON.stringify({
+            userId: user.id,
+            priceId: priceId
+          })
+        }
+      );
+
       if (!response.ok) {
-        throw new Error(sessionData.error || 'Failed to create checkout session');
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to create checkout session');
       }
 
+      const sessionData = await response.json();
       console.log("DEBUG: Checkout session created successfully:", sessionData.id);
-      
+
       // Redirect to Stripe Checkout
       if (sessionData.url) {
         window.location.href = sessionData.url;
       } else {
         throw new Error('No checkout URL received');
       }
-
     } catch (err) {
       console.error("DEBUG: Error creating checkout session:", err);
       setError(err.message || "Failed to open payment page. Please try again.");
@@ -118,7 +116,7 @@ const PricingPage = () => {
           </button>
           <h1 className="text-2xl font-bold essential-memories-title ml-2">Pricing</h1>
         </motion.div>
-        
+
         {/* Premium Status */}
         {checkingStatus ? (
           <motion.div
@@ -142,7 +140,7 @@ const PricingPage = () => {
             </p>
           </motion.div>
         ) : null}
-        
+
         {/* Error Message */}
         {error && (
           <motion.div
@@ -153,7 +151,7 @@ const PricingPage = () => {
             <p className="text-red-600 text-sm">{error}</p>
           </motion.div>
         )}
-        
+
         {/* Success Message */}
         {success && (
           <motion.div
@@ -183,7 +181,7 @@ const PricingPage = () => {
                   <span className="text-gray-600 ml-2">/{plan.interval}</span>
                 </div>
               </div>
-              
+
               {/* Features List */}
               <div className="space-y-3 mb-8">
                 <div className="flex items-center">
@@ -207,18 +205,18 @@ const PricingPage = () => {
                   <span className="text-gray-700">Cancel anytime</span>
                 </div>
               </div>
-              
+
               {/* Subscribe Button */}
               <motion.button
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
                 onClick={() => handlePlanClick(plan.priceId)}
                 disabled={loading || user?.is_premium}
-                className={`w-full py-4 px-6 rounded-xl font-semibold transition-all duration-300 flex items-center justify-center
-                  ${user?.is_premium 
+                className={`w-full py-4 px-6 rounded-xl font-semibold transition-all duration-300 flex items-center justify-center ${
+                  user?.is_premium
                     ? 'bg-gray-200 text-gray-500 cursor-not-allowed'
                     : 'bg-gradient-to-r from-pink-500 to-teal-400 text-white hover:shadow-lg'
-                  }`}
+                }`}
                 style={!user?.is_premium ? { boxShadow: '0 4px 15px rgba(244,114,182,0.2)' } : {}}
               >
                 {loading ? (
@@ -235,7 +233,6 @@ const PricingPage = () => {
                   </>
                 )}
               </motion.button>
-              
               <p className="text-center text-sm text-gray-500 mt-4">
                 Secure payment powered by Stripe
               </p>
@@ -247,5 +244,4 @@ const PricingPage = () => {
   );
 };
 
-console.log("DEBUG: PricingPage updated to use Supabase Edge Function for checkout session creation");
 export default PricingPage;

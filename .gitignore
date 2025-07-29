@@ -22,4 +22,17 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Environment variables
 .env
+.env.local
+.env.production
+
+# Documentation with sensitive info
+DEPLOYMENT_STATUS.md
+SUPABASE_SECRETS_SETUP.md
+STRIPE_PRICE_ID_FIX.md
+
+# Sensitive configuration files
+*_SECRETS_*.md
+*_DEPLOYMENT_*.md
