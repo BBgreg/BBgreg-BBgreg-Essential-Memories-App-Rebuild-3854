@@ -31,9 +31,9 @@ supabase functions deploy ai-chat --project-ref oeccgchvvewljcrfayrg
 
 **Required Secrets** (Add these NOW):
 ```
-STRIPE_SECRET_KEY: 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
-STRIPE_PRICE_ID: price_1RpGRTIa1WstuQNeoUVVfQxv
-SUPABASE_URL: https://oeccgchvvewljcrfayrg.supabase.co
+STRIPE_SECRET_KEY: 
+STRIPE_PRICE_ID: 
+SUPABASE_URL: 
 SUPABASE_SERVICE_ROLE_KEY: [GET FROM: Project Settings > API > service_role key]
 STRIPE_WEBHOOK_SECRET: [GET FROM: Stripe Dashboard after creating webhook]
 ```
