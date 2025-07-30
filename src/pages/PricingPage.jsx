@@ -65,17 +65,22 @@ const PricingPage = () => {
       console.log("DEBUG: Creating checkout session for user:", user.id);
       console.log("DEBUG: Using price ID:", priceId);
 
-      // Call our Edge Function to create a Stripe checkout session
+      // --- FIX STARTS HERE ---
+      // We are adding successUrl and cancelUrl to the request body.
+      // This is what the Edge Function needs to create the checkout session.
       const { data, error: functionError } = await supabase.functions.invoke(
         'create-checkout-session',
         {
           body: {
             userId: user.id,
             priceId: priceId,
-            customerEmail: user.email
+            // Stripe redirects to these URLs after payment attempt.
+            successUrl: `${window.location.origin}`, // Redirects to home page on success
+            cancelUrl: window.location.href,         // Returns to this pricing page on cancel
           }
         }
       );
+      // --- FIX ENDS HERE ---
 
       if (functionError) {
         console.error("DEBUG: Error creating checkout session:", functionError);
@@ -83,17 +88,25 @@ const PricingPage = () => {
         return;
       }
 
-      if (!data?.url) {
-        console.error("DEBUG: No checkout URL returned:", data);
-        setError("Failed to create checkout session - no URL returned");
+      if (!data?.sessionId) { // The Edge function returns a sessionId
+        console.error("DEBUG: No checkout session ID returned:", data);
+        setError("Failed to create checkout session - no session ID returned");
         return;
       }
 
-      console.log("DEBUG: Checkout session created successfully:", data.id);
-      console.log("DEBUG: Redirecting to:", data.url);
+      console.log("DEBUG: Checkout session created successfully:", data.sessionId);
+      
+      // Redirect to Stripe Checkout using the session ID
+      const stripe = await loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY);
+      const { error: stripeError } = await stripe.redirectToCheckout({
+        sessionId: data.sessionId,
+      });
 
-      // Redirect to Stripe Checkout
-      window.location.href = data.url;
+      if (stripeError) {
+        console.error("DEBUG: Stripe redirect error:", stripeError);
+        setError(`Failed to redirect to Stripe: ${stripeError.message}`);
+      }
+
     } catch (err) {
       console.error("DEBUG: Unexpected error creating checkout session:", err);
       setError("An unexpected error occurred. Please try again.");
