@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
+import { loadStripe } from '@stripe/stripe-js';
 import * as FiIcons from 'react-icons/fi';
 import SafeIcon from '../common/SafeIcon';
 
@@ -32,7 +33,6 @@ const PricingPage = () => {
         }
       }
     };
-
     checkPremiumStatus();
   }, [user, refreshPremiumStatus]);
 
@@ -66,13 +66,16 @@ const PricingPage = () => {
       console.log("DEBUG: Using price ID:", priceId);
 
       // Call our Edge Function to create a Stripe checkout session
-      const { data, error: functionError } = await supabase.functions.invoke('create-checkout-session', {
-        body: {
-          userId: user.id,
-          priceId: priceId,
-          customerEmail: user.email
+      const { data, error: functionError } = await supabase.functions.invoke(
+        'create-checkout-session',
+        {
+          body: {
+            userId: user.id,
+            priceId: priceId,
+            customerEmail: user.email
+          }
         }
-      });
+      );
 
       if (functionError) {
         console.error("DEBUG: Error creating checkout session:", functionError);
@@ -91,7 +94,6 @@ const PricingPage = () => {
 
       // Redirect to Stripe Checkout
       window.location.href = data.url;
-
     } catch (err) {
       console.error("DEBUG: Unexpected error creating checkout session:", err);
       setError("An unexpected error occurred. Please try again.");
@@ -218,11 +220,7 @@ const PricingPage = () => {
                     ? 'bg-gray-200 text-gray-500 cursor-not-allowed'
                     : 'bg-gradient-to-r from-pink-500 to-teal-400 text-white hover:shadow-lg'
                 }`}
-                style={
-                  !user?.is_premium
-                    ? { boxShadow: '0 4px 15px rgba(244,114,182,0.2)' }
-                    : {}
-                }
+                style={!user?.is_premium ? { boxShadow: '0 4px 15px rgba(244,114,182,0.2)' } : {}}
               >
                 {loading ? (
                   <>
@@ -238,7 +236,6 @@ const PricingPage = () => {
                   </>
                 )}
               </motion.button>
-
               <p className="text-center text-sm text-gray-500 mt-4">
                 Secure payment powered by Stripe
               </p>

@@ -1,10 +1,10 @@
-import {serve} from "https://deno.land/std@0.177.0/http/server.ts";
-import {createClient} from "https://esm.sh/@supabase/supabase-js@2.7.1";
+import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.7.1";
 import Stripe from "https://esm.sh/stripe@13.5.0?target=deno";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers": "authorization,x-client-info,apikey,content-type",
 };
 
 serve(async (req) => {
@@ -30,16 +30,15 @@ serve(async (req) => {
   try {
     // Get the request body
     const body = await req.text();
-    
     // Get the Stripe signature from the headers
     const signature = req.headers.get("stripe-signature");
-    
     console.log("DEBUG: Webhook received, verifying signature...");
 
     // Initialize Stripe with your secret key
-    const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY") || "", {
-      apiVersion: "2023-10-16",
-    });
+    const stripe = new Stripe(
+      Deno.env.get("STRIPE_SECRET_KEY") || "",
+      { apiVersion: "2023-10-16" }
+    );
 
     // Verify webhook signature
     let event;
@@ -73,7 +72,7 @@ serve(async (req) => {
     if (!supabaseUrl || !supabaseServiceKey) {
       throw new Error("Missing Supabase credentials");
     }
-
+    
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     // Handle different event types
@@ -82,7 +81,6 @@ serve(async (req) => {
       
       // Get the user ID from client_reference_id
       const userId = session.client_reference_id;
-      
       if (!userId) {
         console.error("❌ No user ID found in checkout session client_reference_id");
         return new Response(
@@ -93,14 +91,14 @@ serve(async (req) => {
           }
         );
       }
-
+      
       console.log(`🎯 Checkout completed for user: ${userId}`);
       console.log(`💳 Session details - ID: ${session.id}, Customer: ${session.customer}, Amount: ${session.amount_total}`);
-
+      
       // Store Stripe customer and subscription info
       let stripeCustomerId = session.customer as string;
       let stripeSubscriptionId = session.subscription as string;
-
+      
       // Update user's profile to set is_premium=true and store Stripe info
       const { data, error } = await supabase
         .from("profiles")
@@ -111,7 +109,7 @@ serve(async (req) => {
         })
         .eq("id", userId)
         .select();
-
+        
       if (error) {
         console.error(`❌ Failed to update premium status for user ${userId}:`, error.message);
         
@@ -127,7 +125,7 @@ serve(async (req) => {
             free_poems_generated: 0
           }])
           .select();
-
+          
         if (insertError) {
           console.error(`❌ Failed to create profile for user ${userId}:`, insertError.message);
           return new Response(
@@ -138,7 +136,7 @@ serve(async (req) => {
             }
           );
         }
-
+        
         console.log(`✅ Profile created successfully for user ${userId}:`, newProfile);
         return new Response(
           JSON.stringify({
@@ -154,10 +152,10 @@ serve(async (req) => {
           }
         );
       }
-
+      
       console.log(`✅ User ${userId} premium status updated successfully`);
       console.log("📊 Updated profile data:", data);
-
+      
       return new Response(
         JSON.stringify({
           received: true,
@@ -176,7 +174,7 @@ serve(async (req) => {
     else if (event.type === "customer.subscription.deleted") {
       const subscription = event.data.object as Stripe.Subscription;
       console.log(`🚫 Subscription cancelled: ${subscription.id}`);
-
+      
       // Find user by stripe_subscription_id and revoke premium access
       const { data, error } = await supabase
         .from("profiles")
@@ -186,7 +184,7 @@ serve(async (req) => {
         })
         .eq("stripe_subscription_id", subscription.id)
         .select();
-
+        
       if (error) {
         console.error(`❌ Failed to revoke premium for subscription ${subscription.id}:`, error.message);
         return new Response(
@@ -197,7 +195,7 @@ serve(async (req) => {
           }
         );
       }
-
+      
       console.log(`✅ Premium access revoked for subscription ${subscription.id}`);
       return new Response(
         JSON.stringify({
@@ -212,20 +210,16 @@ serve(async (req) => {
         }
       );
     }
-
+    
     // For other event types, just acknowledge receipt
     console.log(`📝 Received event type ${event.type}, acknowledging without action`);
     return new Response(
-      JSON.stringify({
-        received: true,
-        eventType: event.type
-      }),
+      JSON.stringify({ received: true, eventType: event.type }),
       {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
         status: 200,
       }
     );
-
   } catch (err) {
     console.error(`💥 FATAL ERROR: Unhandled error in webhook: ${err.message}`);
     console.error("Error stack:", err.stack);

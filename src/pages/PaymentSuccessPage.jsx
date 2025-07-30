@@ -43,18 +43,13 @@ const PaymentSuccessPage = () => {
           setLoading(false);
           return;
         }
-
+        
         // Verify the session with Stripe through our Edge Function
         const { data: verificationData, error: verificationError } = await supabase.functions.invoke(
           'verify-checkout-session',
-          {
-            body: {
-              sessionId: sessionId,
-              userId: user?.id
-            }
-          }
+          { body: { sessionId: sessionId, userId: user?.id } }
         );
-
+        
         if (verificationError || !verificationData?.verified) {
           console.error("ERROR: Session verification failed:", verificationError || "Invalid response");
           setError("Payment verification failed. Please contact support.");
@@ -64,7 +59,7 @@ const PaymentSuccessPage = () => {
         
         setSessionVerified(true);
         console.log("DEBUG: Payment session verified successfully");
-
+        
         if (user?.id) {
           // Only update the premium status if the session is verified
           const { error: updateError } = await supabase
@@ -96,7 +91,7 @@ const PaymentSuccessPage = () => {
         setLoading(false);
       }
     };
-
+    
     if (user) {
       verifyPaymentAndUpdateStatus();
     } else {

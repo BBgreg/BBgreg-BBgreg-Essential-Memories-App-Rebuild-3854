@@ -4,8 +4,8 @@ import Stripe from "https://esm.sh/stripe@13.5.0?target=deno";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
+  "Access-Control-Allow-Headers": "authorization,x-client-info,apikey,content-type",
+  "Access-Control-Allow-Methods": "POST,OPTIONS",
 };
 
 serve(async (req) => {
@@ -16,7 +16,7 @@ serve(async (req) => {
       status: 200
     });
   }
-  
+
   // Only allow POST requests
   if (req.method !== "POST") {
     return new Response(
@@ -31,7 +31,6 @@ serve(async (req) => {
   try {
     // Get the request body
     const { userId, priceId, customerEmail } = await req.json();
-    
     console.log("🎯 Creating checkout session for user:", userId);
     console.log("💰 Received price ID:", priceId);
     console.log("📧 Customer email:", customerEmail);
@@ -66,7 +65,6 @@ serve(async (req) => {
     // Use the correct price ID from your Stripe account
     const correctPriceId = "price_1Rq48ZIa1WstuQNeqItRhuTN"; // From your provided data
     const finalPriceId = priceId || correctPriceId;
-    
     console.log("💳 Using price ID for checkout:", finalPriceId);
 
     // Verify the price exists in Stripe before creating checkout session
@@ -119,7 +117,6 @@ serve(async (req) => {
         status: 200,
       }
     );
-
   } catch (err) {
     console.error("💥 Failed to create checkout session:", err.message);
     return new Response(
