@@ -62,54 +62,59 @@ const PricingPage = () => {
     setError('');
 
     try {
-      console.log("DEBUG: Creating checkout session for user:", user.id);
-      console.log("DEBUG: Using price ID:", priceId);
-
       // --- FIX STARTS HERE ---
-      // We are adding successUrl and cancelUrl to the request body.
-      // This is what the Edge Function needs to create the checkout session.
+      // 1. Check for the Stripe Publishable Key FIRST.
+      const stripePublishableKey = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY;
+      if (!stripePublishableKey) {
+        throw new Error("Stripe Publishable Key is not set in the frontend environment. Please check your .env file for VITE_STRIPE_PUBLISHABLE_KEY.");
+      }
+      // --- END OF CHECK ---
+
+      console.log("DEBUG: Creating checkout session for user:", user.id);
+      
       const { data, error: functionError } = await supabase.functions.invoke(
         'create-checkout-session',
         {
           body: {
             userId: user.id,
             priceId: priceId,
-            // Stripe redirects to these URLs after payment attempt.
-            successUrl: `${window.location.origin}`, // Redirects to home page on success
-            cancelUrl: window.location.href,         // Returns to this pricing page on cancel
+            successUrl: `${window.location.origin}`,
+            cancelUrl: window.location.href,
           }
         }
       );
-      // --- FIX ENDS HERE ---
 
       if (functionError) {
-        console.error("DEBUG: Error creating checkout session:", functionError);
-        setError(`Failed to create checkout session: ${functionError.message}`);
-        return;
+        throw new Error(functionError.message);
       }
 
-      if (!data?.sessionId) { // The Edge function returns a sessionId
-        console.error("DEBUG: No checkout session ID returned:", data);
-        setError("Failed to create checkout session - no session ID returned");
-        return;
+      if (!data?.sessionId) {
+        throw new Error("Function did not return a session ID.");
       }
 
       console.log("DEBUG: Checkout session created successfully:", data.sessionId);
       
-      // Redirect to Stripe Checkout using the session ID
-      const stripe = await loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY);
+      // 2. Load Stripe with the validated key.
+      const stripe = await loadStripe(stripePublishableKey);
+      if (!stripe) {
+        throw new Error("Stripe.js failed to load.");
+      }
+
       const { error: stripeError } = await stripe.redirectToCheckout({
         sessionId: data.sessionId,
       });
 
       if (stripeError) {
-        console.error("DEBUG: Stripe redirect error:", stripeError);
-        setError(`Failed to redirect to Stripe: ${stripeError.message}`);
+        // This error is shown if the user closes the Stripe checkout page.
+        // It's not a critical application error.
+        console.warn("Stripe redirect error:", stripeError);
+        setError(`Redirect to checkout failed: ${stripeError.message}`);
       }
 
     } catch (err) {
-      console.error("DEBUG: Unexpected error creating checkout session:", err);
-      setError("An unexpected error occurred. Please try again.");
+      // This will now show a much more specific error message.
+      console.error("DEBUG: A critical error occurred in handlePlanClick:", err);
+      setError(err.message); // Display the specific error to the user.
     } finally {
       setLoading(false);
     }
